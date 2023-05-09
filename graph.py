@@ -55,7 +55,6 @@ class Graph:
 
 	def get_node_dependencies(self, i):
 		# Returns the nodes that must be evaluated before the node at index `i`.
-		print("get_node_dependencies({}):".format(i), self.get_dependency_dict()[i])
 		return self.get_dependency_dict()[i]
 
 	def is_input_node(self, i):
@@ -115,11 +114,6 @@ class Graph:
 		while not self.all_nodes_computed():
 			if i >= self.points():
 				i = self.ilen
-			print("\n\n\n")
-			print("i:", i)
-			print("self.ready:", self.ready)
-			print("self.weights:", self.weights)
-			print("deps:", self.get_dependency_dict())
 			if self.is_node_ready_for_compute(i):
 				self.compute_value_for_node(i)
 			i += 1
@@ -191,10 +185,8 @@ class Graph:
 		
 	def compute_value_for_node(self, i):
 		self.ready[i] = True
-		if self.is_input_node(i):
-			return self.vals[i]
- 
-		self.vals[i] = self.fn(self.dot(i))
+		if not self.is_input_node(i):
+			self.vals[i] = self.fn(self.dot(i))
 		return self.vals[i]
 	
 	def dot(self, i):
@@ -216,3 +208,4 @@ net.add_edge(4, 2)
 net.print()
 print(net.fwd([0, 0]))
 print(net.fwd([1, 1])) 
+net.print()
