@@ -42,16 +42,23 @@ class Graph:
 		self.dE_dPRE = {}
 	
 		# Stores contributions to dE/dPOST. 
-		# Nested dictionary of (weight, dE/dPRE) pairs => {node1: {node2: .5, node3: .4}} 
+		# Nested dictionary of (weight, dE/dPRE) KV pairs => {node1: {node2: .5, node3: .4}, ...} 
 		self.dE_dPOSTs = {}
 	
 		# Stores the derivative of error with respect to the current weight 
 		# Nested dictionary => {node1: {node2: .5, node3: .4}, ...}
 		self.dE_dW = {}
 	
-		# Stores the 
-	
 		self.initialize_dictionaries()
+
+	def dE_dPOST(self, i):
+		# Returns the derivative of error with respect to the POST of the node at index `i`.
+		# This is the sum of the contributions from each of the node's outgoing edges. 
+		return sum(list(self.dE_dPOSTs[i].values()))
+
+	def abs_dE_dPOST(self, i):
+		# Returns the sum of the absolute values of the contributions to dE/dPOST.
+		return sum(list(map(lambda x : abs(x), list(self.dE_dPOSTs[i].values()))))
 
 	def get_node_dependencies(self, i):
 		# Returns the nodes that must be evaluated before the node at index `i`.
