@@ -37,10 +37,6 @@ class Graph:
 		# Non-nested dictionary => {node1: .5, node2: .4, ...}
 		self.vals = {}
 	
-		# Stores the derivative of error with respect to the current node's PRE
-		# Non-nested dictionary => {node1: .5, node2: .4, ...}
-		self.dE_dPRE = {}
-	
 		# Stores contributions to dE/dPOST. 
 		# Nested dictionary of (weight, dE/dPRE) KV pairs => {node1: {node2: .5, node3: .4}, ...} 
 		self.dE_dPOSTs = {}
@@ -59,6 +55,10 @@ class Graph:
 	def abs_dE_dPOST(self, i):
 		# Returns the sum of the absolute values of the contributions to dE/dPOST.
 		return sum(list(map(lambda x : abs(x), list(self.dE_dPOSTs[i].values()))))
+
+	def dE_dPRE(self, i):
+		# Returns the derivative of error with respect to the PRE of the node at index `i`.
+		return self.dE_dPOST(i) * self.fnd(self.vals[i])
 
 	def get_node_dependencies(self, i):
 		# Returns the nodes that must be evaluated before the node at index `i`.
