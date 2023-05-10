@@ -121,28 +121,6 @@ class Graph:
 			
 		return self.outputs()
 
-	def dE_dPOST(self, i):
-		# Returns the derivative of error with respect to the POST of the node at index `i`.
-		# This is the sum of the contributions from each of the node's outgoing edges. 
-		return sum(list(self.dE_dPOSTs[i].values()))
-
-	def abs_dE_dPOST(self, i):
-		# Returns the sum of the absolute values of the contributions to dE/dPOST.
-		return sum(list(map(lambda x : abs(x), list(self.dE_dPOSTs[i].values()))))
-
-	def dE_dPRE(self, i):
-		# Returns the derivative of error with respect to the PRE of the node at index `i`.
-		return self.dE_dPOST(i) * self.fnd(self.vals[i])
-
-	def dE_dW(self, i, j):
-		# Returns the derivative of error with respect to the weight from node `i` to node `j`.
-		return self.dE_dPRE(j) * self.vals[i]
-
-	def compute_dE_dPOSTs(self, i):
-		# Computes the contributions to dE/dPOST for each of the node's outgoing edges. 
-		for j in self.get_node_dependencies(i):
-			self.dE_dPOSTs[i][j] = self.dE_dW(i, j)
-
 	def get_node_dependencies(self, i):
 		# Returns the nodes that must be evaluated before the node at index `i`.
 		return self.get_dependency_dict()[i]
@@ -197,17 +175,17 @@ class Graph:
 		return self.ilen + self.olen + self.nodes
 	
 	def reset(self):
-		for i in range(self.ilen, self.points()):
-			self.ready[i] = False
 		for i in range(self.ilen, self.ilen + self.olen):
-			self.vals[i] = 0
+			self.ready[i] = False
+			self.PRE[i] = 0
+			self.POST[i] = 0
 	
 	def outputs(self):
 		return [self.vals[i] for i in range(self.ilen, self.ilen + self.olen)]
 
 	def copy_inputs(self, inps):
 		for i in range(self.ilen):
-			self.vals[i] = inps[i]
+			self.POST[i] = inps[i]
 			self.ready[i] = True
 
 	def error(self, outs):
@@ -216,7 +194,6 @@ class Graph:
 	def update_output_PRE_errors(self, outs):
 		error_list = list(map(lambda pair : (pair[0] - pair[1]) ** 2, list(zip(outs, self.outputs()))))
 		for i in range(self.ilen, self.ilen + self.olen):
-						# Autocompleted, could be wrong 
 			self.PRE_error[i] = error_list[i - self.ilen]
 		return error_list
 
