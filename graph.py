@@ -11,6 +11,10 @@ def SquaredDifference(preds, actus):
 print("SquaredDifference:", SquaredDifference([1, 2], [3, 4]))
 print("SquaredDifference:", SquaredDifference([1, 2], [3, 5]))
 
+"""
+Each node has a POST and a PRE. 
+"""
+
 class Graph:
 	def __init__(self, ilen, olen, lr=0.05, fn=ReLU, fnd=ReLUDerivative):
 		"""
@@ -23,9 +27,14 @@ class Graph:
 		self.fn = fn
 		self.fnd = fnd
 		self.lr = lr
+
+		"""
+		Output nodes don't have an activation function, so only need PRE error signal. 
+		Input nodes don't have a PRE, so only need POST error signal. 
+		"""
 		
 		"""
-		Forward & backward pass info 
+		Forward pass info 
 		"""
 		# Nested dictionary of nodes to their weights => {node1: {node2: .5, node3: .4}}
 		self.weights = {}
@@ -35,17 +44,82 @@ class Graph:
 		self.ready = {}
 		# Stores forward pass values. One trial only. 
 		# Non-nested dictionary => {node1: .5, node2: .4, ...}
-		self.vals = {}
+		self.POST = {}
+		self.PRE = {}
 	
-		# Stores contributions to dE/dPOST. 
-		# Nested dictionary of (weight, dE/dPRE) KV pairs => {node1: {node2: .5, node3: .4}, ...} 
-		self.dE_dPOSTs = {}
-	
-		# Stores the derivative of error with respect to the current weight 
-		# Nested dictionary => {node1: {node2: .5, node3: .4}, ...}
-		self.dE_dW = {}
+		"""
+		Backward pass info
+		"""
+		self.weights_error = {}
+		# Stores whether PRE error signal has been computed for each node.
+		self.ready_error = {}
+		self.POST_error = {}
+		self.PRE_error = {}
+		# Stores the error signal for each value, which is summed to get dE/dPOST
+		self.values_error = {}
 	
 		self.initialize_dictionaries()
+	
+	def bwd(self, outs):
+		self.update_output_PRE_errors(outs)
+		self.update_node_errors()
+		self.update_weight_errors()
+		self.adjust_weights()
+	
+	def update_node_errors(self):
+		i = 0 
+		while not self.all_nodes_error_computed():
+			if i >= self.points():
+				i = 0
+			if self.is_node_error_ready_for_compute(i) and not self.is_input_node(i):
+				self.update_PRE_and_POST_error_for_node(i)
+			i += 1
+
+	def update_weight_errors(self):
+		for i in range(self.points()):
+			for j in self.get_following_nodes(i):
+				# Weights error = next node's PRE error * current node's POST value 
+				self.weights_error[i][j] = self.POST[i] * self.PRE_error[j]
+		
+	def adjust_weights(self):
+		for i in range(self.points()):
+			if not self.is_output_node(i):
+				for j in self.get_following_nodes(i):
+					self.weights[i][j] -= self.lr * self.weights_error[i][j]
+
+	def is_node_error_ready_for_compute(self, i):
+		for j in self.get_following_nodes(i):
+			if not self.ready_error[j]:
+				return False
+		return True
+
+	def update_PRE_and_POST_error_for_node(self, i):
+		POST = 0
+		for j in self.get_following_nodes(i):
+			if self.values_error[j] != {}:
+				print("Creating new dictionary for tabbing errors")
+			# Error that j node is contributing to i node.
+			self.values_error[i][j] = self.PRE_error[j] * self.weights[i][j]
+
+		self.POST_error[i] = sum(list(self.values_error[i].values()))
+		self.PRE_error[i] = self.POST_error[i] * self.fnd(self.PRE[i])
+	
+	def get_following_nodes(self, i):
+		return self.weights[i].keys()
+	
+	def fwd(self, inps):
+		self.reset()
+		self.copy_inputs(inps)
+
+		i = self.ilen
+		while not self.all_nodes_computed():
+			if i >= self.points():
+				i = self.ilen
+			if self.is_node_ready_for_compute(i):
+				self.update_PRE_and_POST_for_node(i)
+			i += 1
+			
+		return self.outputs()
 
 	def dE_dPOST(self, i):
 		# Returns the derivative of error with respect to the POST of the node at index `i`.
@@ -59,6 +133,15 @@ class Graph:
 	def dE_dPRE(self, i):
 		# Returns the derivative of error with respect to the PRE of the node at index `i`.
 		return self.dE_dPOST(i) * self.fnd(self.vals[i])
+
+	def dE_dW(self, i, j):
+		# Returns the derivative of error with respect to the weight from node `i` to node `j`.
+		return self.dE_dPRE(j) * self.vals[i]
+
+	def compute_dE_dPOSTs(self, i):
+		# Computes the contributions to dE/dPOST for each of the node's outgoing edges. 
+		for j in self.get_node_dependencies(i):
+			self.dE_dPOSTs[i][j] = self.dE_dW(i, j)
 
 	def get_node_dependencies(self, i):
 		# Returns the nodes that must be evaluated before the node at index `i`.
@@ -80,7 +163,7 @@ class Graph:
 		for start_node, node_weight_dict in self.weights.items():
 			if not self.is_input_node(start_node):
 				deps[start_node] = set()
-   
+	 
 		for start_node, node_weight_dict in self.weights.items():
 			for end_node, weight in node_weight_dict.items():
 				deps[end_node].add(start_node)
@@ -112,20 +195,6 @@ class Graph:
 
 	def points(self):
 		return self.ilen + self.olen + self.nodes
-		
-	def fwd(self, inps):
-		self.reset()
-		self.copy_inputs(inps)
-
-		i = self.ilen
-		while not self.all_nodes_computed():
-			if i >= self.points():
-				i = self.ilen
-			if self.is_node_ready_for_compute(i):
-				self.compute_value_for_node(i)
-			i += 1
-			
-		return self.outputs()
 	
 	def reset(self):
 		for i in range(self.ilen, self.points()):
@@ -140,16 +209,16 @@ class Graph:
 		for i in range(self.ilen):
 			self.vals[i] = inps[i]
 			self.ready[i] = True
-	
-	def bwd(self, outs, error):
-		# Getting how much each output node needs to change to reduce error.
-		for i in range(self.ilen, self.ilen + self.olen):
-			# Change = -learning_rate * error * derivative 
-
-			self.node_changes[i] = self.fnd(self.vals[i]) * (self.vals[i] - outs[i - self.ilen])
 
 	def error(self, outs):
 		return SquaredDifference(outs, self.outputs())
+
+	def update_output_PRE_errors(self, outs):
+		error_list = list(map(lambda pair : (pair[0] - pair[1]) ** 2, list(zip(outs, self.outputs()))))
+		for i in range(self.ilen, self.ilen + self.olen):
+						# Autocompleted, could be wrong 
+			self.PRE_error[i] = error_list[i - self.ilen]
+		return error_list
 
 	def add_edge(self, idep, iindep, weight=0.5, verbose=True):
 		# If the node is beyond the end of the network, return `False`.
@@ -190,10 +259,11 @@ class Graph:
 				return False
 		return True
 		
-	def compute_value_for_node(self, i):
+	def update_PRE_and_POST_for_node(self, i):
 		self.ready[i] = True
-		if not self.is_input_node(i):
-			self.vals[i] = self.fn(self.dot(i))
+		if self.is_input_node(i):
+			print("Uh oh. Updating PRE and POST for input node. In graph.py's update_PRE_and_POST_for_node.")
+		self.vals[i] = self.fn(self.dot(i))
 		return self.vals[i]
 	
 	def dot(self, i):
