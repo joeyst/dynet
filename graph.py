@@ -59,6 +59,18 @@ class Graph:
 		self.values_error = {}
 	
 		self.initialize_dictionaries()
+
+	def initialize_dictionaries(self):
+		for i in range(self.points()):
+			self.weights[i] = {}
+			self.weights_error[i] = {}
+			self.ready[i] = False
+			self.ready_error[i] = False
+			self.PRE[i] = 0
+			self.POST[i] = 0
+			self.PRE_error[i] = 0
+			self.POST_error[i] = 0
+			self.values_error[i] = {}
 	
 	def bwd(self, outs):
 		self.update_output_PRE_errors(outs)
@@ -147,30 +159,6 @@ class Graph:
 				deps[end_node].add(start_node)
 		return deps 
 
-	def initialize_dictionaries(self):
-		for i in range(self.ilen, self.ilen + self.olen):
-			self.weights[i] = {}
-			self.ready[i] = False
-			self.vals[i] = 0
-			self.dE_dPRE[i] = 0
-			self.dE_dPOSTs[i] = {}
-			self.dE_dW[i] = {}
-
-		for i in range(self.points()):
-			self.ready[i] = False
-	 
-		for i in range(self.points()):
-			self.vals[i] = 0
-	 
-		for i in range(self.points()):
-			self.dE_dPRE[i] = 0
-	 
-		for i in range(self.points()):
-			self.dE_dPOSTs[i] = {}
-	 
-		for i in range(self.points()):
-			self.dE_dW[i] = {}
-
 	def points(self):
 		return self.ilen + self.olen + self.nodes
 	
@@ -181,7 +169,7 @@ class Graph:
 			self.POST[i] = 0
 	
 	def outputs(self):
-		return [self.vals[i] for i in range(self.ilen, self.ilen + self.olen)]
+		return [self.POST[i] for i in range(self.ilen, self.ilen + self.olen)]
 
 	def copy_inputs(self, inps):
 		for i in range(self.ilen):
@@ -219,11 +207,17 @@ class Graph:
 		if verbose:
 			print("Adding node with id: {}".format(node_id))
 		self.weights[node_id] = {}
+		self.weights_error[node_id] = {}
 		self.ready[node_id] = False
-		self.vals[node_id] = 0
+		self.ready_error[node_id] = False
+		self.PRE[node_id] = 0
+		self.POST[node_id] = 0
+		self.PRE_error[node_id] = 0
+		self.POST_error[node_id] = 0
+		self.values_error[node_id] = {}
 		self.nodes += 1
 		return self.nodes - 1
-		
+
 	def is_node_ready_for_compute(self, i):
 		for index in self.get_node_dependencies(i):
 			if self.ready[index] is False:
@@ -240,11 +234,12 @@ class Graph:
 		self.ready[i] = True
 		if self.is_input_node(i):
 			print("Uh oh. Updating PRE and POST for input node. In graph.py's update_PRE_and_POST_for_node.")
-		self.vals[i] = self.fn(self.dot(i))
-		return self.vals[i]
+		self.PRE[i] = self.dot(i)
+		self.POST[i] = self.fn(self.PRE[i])
+		return self.POST[i]
 	
 	def dot(self, i):
-		return sum([self.weights[j][i] * self.vals[j] for j in self.get_node_dependencies(i)])
+		return sum([self.weights[j][i] * self.POST[j] for j in self.get_node_dependencies(i)])
 	
 	def repr(self):
 		return "# nodes: {}\nweights: {}\ndepends: {}\n".format(self.points(), self.weights, self.get_dependency_dict())
