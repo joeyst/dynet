@@ -38,6 +38,9 @@ class Graph:
 		"""
 		# Nested dictionary of nodes to their weights => {node1: {node2: .5, node3: .4}}
 		self.weights = {}
+		for i in range(self.points()):
+			if not self.is_output_node(i):
+				self.weights[i] = {}
 
 		# (node1: {node2: .5, node3: .4, node7: .7})
 		# Stores `True`/`False` values for if nodes have had all their dependencies computed. 
@@ -120,14 +123,20 @@ class Graph:
 		Resets: POST, PRE, POST_error, PRE_error, values_error, ready, ready_error, weights_error
 		"""
 		for i in range(self.points()):
-			self.POST[i] = 0
-			self.PRE[i] = 0
-			self.PRE_error[i] = 0
-			self.POST_error[i] = 0
-			self.values_error[i] = {}
+			if not self.is_output_node(i):
+				self.POST[i] = 0
+				self.values_error[i] = {}
+				self.weights_error[i] = {}
+
+			if not self.is_input_node(i):
+				self.PRE[i] = 0
+				self.PRE_error[i] = 0
+
+			if not self.is_output_node(i) and not self.is_input_node(i):
+				self.POST_error[i] = 0
+
 			self.ready[i] = False
 			self.ready_error[i] = False
-			self.weights_error[i] = {}
 	
 	def bwd(self, outs):
 		self.update_output_PRE_errors(outs)
@@ -150,21 +159,22 @@ class Graph:
 		return self.outputs()
 	
 	def update_node_errors(self):
-		i = 0 
+		i = self.ilen
 		while not self.all_nodes_error_computed():
 			if i >= self.points():
-				i = 0
-			if self.is_node_error_ready_for_compute(i) and not self.is_input_node(i):
+				i = self.ilen
+			if not self.is_input_node(i) and not self.is_output_node(i) and self.is_node_error_ready_for_compute(i):
 				self.update_PRE_and_POST_error_for_node(i)
 			i += 1
 
 	def update_weight_errors(self):
-		for i in range(self.points()):
+		for i in range(self.ilen + self.olen, self.points()):
 			for j in self.get_following_nodes(i):
 				# Weights error = next node's PRE error * current node's POST value 
 				self.weights_error[i][j] = self.POST[i] * self.PRE_error[j]
 		
 	def adjust_weights(self):
+		self.print()
 		for i in range(self.points()):
 			if not self.is_output_node(i):
 				for j in self.get_following_nodes(i):
@@ -176,7 +186,7 @@ class Graph:
 				return False
 		return True
 
-	def update_PRE_and_POST_error_for_node(self, i):
+	def update_PRE_and_POST_error_for_node(self, previous):
 	 
 		# We have a node that points to a bunch of other nodes, so 
 		# its responsibility in the error will be the sum of how it 
@@ -207,16 +217,18 @@ class Graph:
 		dError/dPOST => dError/dPRE * dPRE/dPOST 
 		"""
 	 
-		for j in self.get_following_nodes(i):
+		print("PREVIOUS:", previous)
+		for next_node in self.get_following_nodes(previous):
 			# Might be wrong bc should be [i]
-			if self.values_error[j] != {}:
+			if self.values_error[previous] != {}:
 				print("Creating new dictionary for tabbing errors")
+				self.values_error[previous] = {}
 			# Error that j node is contributing to i node.
-			self.values_error[i][j] = self.PRE_error[j] * self.weights[i][j]
+			self.values_error[previous][next_node] = self.PRE_error[next_node] * self.weights[previous][next_node]
 
-		self.POST_error[i] = sum(list(self.values_error[i].values()))
-		self.PRE_error[i] = self.POST_error[i] * self.fnd(self.PRE[i])
-		self.ready_error[i] = True
+		self.POST_error[previous] = sum(list(self.values_error[previous].values()))
+		self.PRE_error[previous] = self.POST_error[previous] * self.fnd(self.PRE[previous])
+		self.ready_error[previous] = True
 	
 	def get_following_nodes(self, i):
 		return self.weights[i].keys()
@@ -237,13 +249,16 @@ class Graph:
 	def get_dependency_dict(self):
 		# Map of node indices to the node indices that must be evaluated 
 		# BEFORE them. 
+		
+		print("WEIGHTS:", self.weights)
 		deps = {}
-		for start_node, node_weight_dict in self.weights.items():
-			if not self.is_input_node(start_node):
-				deps[start_node] = set()
-	 
+		for i in range(self.ilen, self.points()):
+			deps[i] = set()
+
 		for start_node, node_weight_dict in self.weights.items():
 			for end_node, weight in node_weight_dict.items():
+				if not end_node in deps.keys():
+					print("Error: {} not in dictionary. graph.py's get_dependency_dict")
 				deps[end_node].add(start_node)
 		return deps 
 
