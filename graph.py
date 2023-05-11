@@ -293,12 +293,14 @@ class Graph:
 		
 		# If the node is not in the dependencies map, then we must be trying to 
 		# add a dependency to an input node. Return `False`.
-		if self.is_input_node(prior):
+		if self.is_input_node(successor):
 			print("Cannot add dependency to input node.")
 			return False
 		
 		# Otherwise, add the dependency and return `True`.
 		self.weights[prior][successor] = weight
+		self.values_error[prior][successor] = 0
+		self.weights_error[prior][successor] = 0
 		return True
 
 	def add_node(self, verbose=True):

@@ -27,3 +27,13 @@ class TestGraph(ut.TestCase):
 		self.assertEqual(net.ready_error, {2: False, 3: False, 4: False})
 		self.assertEqual(net.PRE_error, {2: 0, 3: 0, 4: 0})
 		self.assertEqual(net.POST_error, {3: 0, 4: 0})
+	
+	def test_add_edge(self):
+		net = Graph(2, 1)
+		net.add_node()
+		net.add_edge(3, 2)
+	
+		self.assertTrue(2 in net.weights[3])
+		self.assertEqual(net.get_dependency_dict(), {2: {3}, 3: set()})
+		self.assertEqual(net.values_error, {3: {2: 0}})
+		self.assertTrue(2 in net.weights_error[3] and 0 in net.weights_error)
