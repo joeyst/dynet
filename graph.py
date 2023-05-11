@@ -63,18 +63,6 @@ class Graph:
 	
 		self.reset_for_trial()
 
-	def initialize_dictionaries(self):
-		for i in range(self.points()):
-			self.weights[i] = {}
-			self.weights_error[i] = {}
-			self.ready[i] = False
-			self.ready_error[i] = False
-			self.PRE[i] = 0
-			self.POST[i] = 0
-			self.PRE_error[i] = 0
-			self.POST_error[i] = 0
-			self.values_error[i] = {}
-
 	def trial(self, inps, outs, verbose=True):
 		print("Pre-forward pass:", self.repr())
 		self.fwd(inps)
@@ -93,9 +81,13 @@ class Graph:
 				self.PRE_error[i] = 0
 			if not self.is_output_node(i):
 				self.weights_error[i] = {}
+				for next_node in self.get_following_nodes(i):
+					self.weights_error[i][next_node] = 0
 			if not self.is_input_node(i) and not self.is_output_node(i):
 				self.POST_error[i] = 0
 				self.values_error[i] = {}
+				for next_node in self.get_following_nodes(i):
+					self.values_error[i][next_node] = 0
  
 	def set_PRE_and_POST_to_zero(self):
 		# Input nodes don't have a PRE. 
@@ -266,12 +258,11 @@ class Graph:
 		return self.ilen + self.olen + self.nodes
 	
 	def outputs(self):
-		return [self.POST[i] for i in range(self.ilen, self.ilen + self.olen)]
+		return [self.PRE[i] for i in range(self.ilen, self.ilen + self.olen)]
 
 	def copy_inputs(self, inps):
 		for i in range(self.ilen):
 			self.POST[i] = inps[i]
-			self.PRE[i] = None
 			self.ready[i] = True
 
 	def error(self, outs):
@@ -343,8 +334,11 @@ class Graph:
 		if self.is_input_node(i):
 			print("Uh oh. Updating PRE and POST for input node. In graph.py's update_PRE_and_POST_for_node.")
 		self.PRE[i] = self.dot(i)
-		self.POST[i] = self.fn(self.PRE[i])
-		return self.POST[i]
+		if not self.is_output_node(i):
+			self.POST[i] = self.fn(self.PRE[i])
+			return self.POST[i]
+		else:
+			print("Not updating POST value for output node. graph.py's update_PRE_and_POST_for_node.")
 	
 	def dot(self, i):
 		return sum([self.weights[j][i] * self.POST[j] for j in self.get_node_dependencies(i)])
