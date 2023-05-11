@@ -63,18 +63,6 @@ class Graph:
 	
 		self.reset_for_trial()
 
-	def initialize_dictionaries(self):
-		for i in range(self.points()):
-			self.weights[i] = {}
-			self.weights_error[i] = {}
-			self.ready[i] = False
-			self.ready_error[i] = False
-			self.PRE[i] = 0
-			self.POST[i] = 0
-			self.PRE_error[i] = 0
-			self.POST_error[i] = 0
-			self.values_error[i] = {}
-
 	def trial(self, inps, outs, verbose=True):
 		print("Pre-forward pass:", self.repr())
 		self.fwd(inps)
