@@ -166,7 +166,6 @@ class Graph:
 				self.weights_error[i][j] = self.POST[i] * self.PRE_error[j]
 		
 	def adjust_weights(self):
-		self.print()
 		for i in range(self.points()):
 			if not self.is_output_node(i):
 				for j in self.get_following_nodes(i):
@@ -271,6 +270,7 @@ class Graph:
 	def update_output_PRE_errors(self, outs):
 		error_list = list(map(lambda pair : (pair[0] - pair[1]) ** 2, list(zip(outs, self.outputs()))))
 		for i in range(self.ilen, self.ilen + self.olen):
+			print("Setting PRE_error[{}]".format(i))
 			self.PRE_error[i] = error_list[i - self.ilen]
 			self.ready_error[i] = True
 		return error_list
@@ -345,7 +345,7 @@ class Graph:
 	
 	def repr(self):
 		return "\n===\n# nodes       : {}\nweights       : {}\ndepends       : {}\nready         : {}\nPRE           : {}\nPOST          : {}\nready_error   : {}\nPRE_error     : {}\nPOST_error    : {}\nvalues_error  : {}\nweights_error : {}\n\n\n".format(self.points(), self.weights, self.get_dependency_dict(), 
-			self.ready, self.POST, self.PRE, self.ready_error, self.POST_error, self.PRE_error, self.values_error, self.weights_error)
+			self.ready, self.PRE, self.POST, self.ready_error, self.PRE_error, self.POST_error, self.values_error, self.weights_error)
 	
 	def print(self):
 		print(self.repr())

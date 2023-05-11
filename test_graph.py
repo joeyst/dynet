@@ -57,3 +57,19 @@ class TestGraph(ut.TestCase):
 		self.assertEqual(net.ready_error, {2: False, 3: False})
 		self.assertEqual(net.PRE_error, {2: 0, 3: 0})
 		self.assertEqual(net.POST_error, {3: 0})
+
+	def test_bwd_with_edge(self):
+		net = Graph(2, 1)
+		net.add_node()
+		net.add_edge(3, 2)
+
+		net.fwd([1, 1])
+		print("After fwd:")
+		net.print()
+		net.bwd([1])
+		print("After bwd:")
+		net.print()
+		self.assertEqual(net.ready_error, {2: True, 3: True})
+		self.assertEqual(net.PRE_error, {2: 1, 3: 0.5})
+		self.assertEqual(net.POST_error, {3: 0.5})
+		self.assertEqual(net.values_error, {3: {2: 0.5}})
