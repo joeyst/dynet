@@ -58,7 +58,7 @@ class Graph:
 		# Stores the error signal for each value, which is summed to get dE/dPOST
 		self.values_error = {}
 	
-		self.initialize_dictionaries()
+		self.reset_for_trial()
 
 	def initialize_dictionaries(self):
 		for i in range(self.points()):
@@ -71,12 +71,83 @@ class Graph:
 			self.PRE_error[i] = 0
 			self.POST_error[i] = 0
 			self.values_error[i] = {}
+
+	def trial(self, inps, outs, verbose=True):
+		print("Pre-forward pass:", self.repr())
+		self.fwd(inps)
+		print("Post-forward pass:", self.repr())
+		self.bwd(outs)
+		print("Post-backward pass:", self.repr())
+	
+	def reset_for_trial(self):
+		self.set_all_four_errors_to_zero()
+		self.set_PRE_and_POST_to_zero()
+		self.set_readiness_and_readiness_error_to_false()
+
+	def set_all_four_errors_to_zero(self):
+		for i in range(self.points()):
+			if not self.is_input_node(i):
+				self.PRE_error[i] = 0
+			if not self.is_output_node(i):
+				self.weights_error[i] = {}
+			if not self.is_input_node(i) and not self.is_output_node(i):
+				self.POST_error[i] = 0
+				self.values_error[i] = {}
+ 
+	def set_PRE_and_POST_to_zero(self):
+		# Input nodes don't have a PRE. 
+		# Output nodes don't have a POST. 
+		for i in range(self.points()):
+			if not self.is_input_node(i):
+				self.PRE[i] = 0
+			if not self.is_output_node(i):
+				self.POST[i] = 0
+		
+	def set_readiness_and_readiness_error_to_false(self):
+		# All nodes start out not ready.
+		# Input nodes don't need to compute any error. 
+		for i in range(self.points()):
+			self.ready[i] = False
+			if not self.is_input_node(i):
+				self.ready_error[i] = False
+		
+		for i in range(self.points()):
+			if self.is_input_node(i) and i in self.ready_error:
+				raise Exception("Input node should not have a ready error.")
+ 
+	def reset(self):
+		"""
+		Resets: POST, PRE, POST_error, PRE_error, values_error, ready, ready_error, weights_error
+		"""
+		for i in range(self.points()):
+			self.POST[i] = 0
+			self.PRE[i] = 0
+			self.PRE_error[i] = 0
+			self.POST_error[i] = 0
+			self.values_error[i] = {}
+			self.ready[i] = False
+			self.ready_error[i] = False
+			self.weights_error[i] = {}
 	
 	def bwd(self, outs):
 		self.update_output_PRE_errors(outs)
 		self.update_node_errors()
 		self.update_weight_errors()
 		self.adjust_weights()
+	
+	def fwd(self, inps):
+		self.reset_for_trial()
+		self.copy_inputs(inps)
+
+		i = self.ilen
+		while not self.all_nodes_computed():
+			if i >= self.points():
+				i = self.ilen
+			if self.is_node_ready_for_compute(i):
+				self.update_PRE_and_POST_for_node(i)
+			i += 1
+			
+		return self.outputs()
 	
 	def update_node_errors(self):
 		i = 0 
@@ -106,8 +177,38 @@ class Graph:
 		return True
 
 	def update_PRE_and_POST_error_for_node(self, i):
-		POST = 0
+	 
+		# We have a node that points to a bunch of other nodes, so 
+		# its responsibility in the error will be the sum of how it 
+		# affects those other nodes. 
+	
+		# So, get a list of nodes it points to, and sum the PRE values of those nodes 
+		# multiplied with the weights 
+	
+		"""
+		NEXT1_PRE = sum(w1v1 + w2v2 ...)
+		NEXT2_PRE = sum(...)
+		NEXT3_PRE = sum(...)
+	
+		# We need to figure out the error that CURR_NODE contributes. 
+		CURR_NODE => VALUE 
+		VALUE = Weight * PREVIOUS_POST 
+		Take derivative w/ respect to previous post, and we get the WEIGHT. 
+
+		Take each of the next PREs and multiply them with their corresponding weights 
+		=> dot product 
+
+
+	 
+	 
+	 
+		PRE => apply nonlinear function to PRE to get POST 
+		We know the POST error contribution 
+		dError/dPOST => dError/dPRE * dPRE/dPOST 
+		"""
+	 
 		for j in self.get_following_nodes(i):
+			# Might be wrong bc should be [i]
 			if self.values_error[j] != {}:
 				print("Creating new dictionary for tabbing errors")
 			# Error that j node is contributing to i node.
@@ -115,23 +216,10 @@ class Graph:
 
 		self.POST_error[i] = sum(list(self.values_error[i].values()))
 		self.PRE_error[i] = self.POST_error[i] * self.fnd(self.PRE[i])
+		self.ready_error[i] = True
 	
 	def get_following_nodes(self, i):
 		return self.weights[i].keys()
-	
-	def fwd(self, inps):
-		self.reset()
-		self.copy_inputs(inps)
-
-		i = self.ilen
-		while not self.all_nodes_computed():
-			if i >= self.points():
-				i = self.ilen
-			if self.is_node_ready_for_compute(i):
-				self.update_PRE_and_POST_for_node(i)
-			i += 1
-			
-		return self.outputs()
 
 	def get_node_dependencies(self, i):
 		# Returns the nodes that must be evaluated before the node at index `i`.
@@ -162,18 +250,13 @@ class Graph:
 	def points(self):
 		return self.ilen + self.olen + self.nodes
 	
-	def reset(self):
-		for i in range(self.ilen, self.ilen + self.olen):
-			self.ready[i] = False
-			self.PRE[i] = 0
-			self.POST[i] = 0
-	
 	def outputs(self):
 		return [self.POST[i] for i in range(self.ilen, self.ilen + self.olen)]
 
 	def copy_inputs(self, inps):
 		for i in range(self.ilen):
 			self.POST[i] = inps[i]
+			self.PRE[i] = None
 			self.ready[i] = True
 
 	def error(self, outs):
@@ -183,23 +266,24 @@ class Graph:
 		error_list = list(map(lambda pair : (pair[0] - pair[1]) ** 2, list(zip(outs, self.outputs()))))
 		for i in range(self.ilen, self.ilen + self.olen):
 			self.PRE_error[i] = error_list[i - self.ilen]
+			self.ready_error[i] = True
 		return error_list
 
-	def add_edge(self, idep, iindep, weight=0.5, verbose=True):
+	def add_edge(self, prior, successor, weight=0.5, verbose=True):
 		# If the node is beyond the end of the network, return `False`.
-		if idep >= self.points() or iindep >= self.points():
+		if prior >= self.points() or successor >= self.points():
 			if verbose:
 				print("Node index out of bounds.")
 			return False
 		
 		# If the node is not in the dependencies map, then we must be trying to 
 		# add a dependency to an input node. Return `False`.
-		if idep not in self.get_dependency_dict():
+		if self.is_input_node(prior):
 			print("Cannot add dependency to input node.")
 			return False
 		
 		# Otherwise, add the dependency and return `True`.
-		self.weights[iindep][idep] = weight
+		self.weights[prior][successor] = weight
 		return True
 
 	def add_node(self, verbose=True):
@@ -229,6 +313,13 @@ class Graph:
 			if self.ready[i] is False:
 				return False
 		return True
+
+	def all_nodes_error_computed(self):
+		# print("Ready error: {}".format(self.ready_error))
+		for i in range(self.ilen, self.points()):
+			if self.ready_error[i] is False:
+				return False
+		return True
 		
 	def update_PRE_and_POST_for_node(self, i):
 		self.ready[i] = True
@@ -242,7 +333,8 @@ class Graph:
 		return sum([self.weights[j][i] * self.POST[j] for j in self.get_node_dependencies(i)])
 	
 	def repr(self):
-		return "# nodes: {}\nweights: {}\ndepends: {}\n".format(self.points(), self.weights, self.get_dependency_dict())
+		return "\n===\n# nodes       : {}\nweights       : {}\ndepends       : {}\nready         : {}\nPRE           : {}\nPOST          : {}\nready_error   : {}\nPRE_error     : {}\nPOST_error    : {}\nvalues_error  : {}\nweights_error : {}\n\n\n".format(self.points(), self.weights, self.get_dependency_dict(), 
+			self.ready, self.POST, self.PRE, self.ready_error, self.POST_error, self.PRE_error, self.values_error, self.weights_error)
 	
 	def print(self):
 		print(self.repr())
@@ -258,3 +350,7 @@ net.print()
 print(net.fwd([0, 0]))
 print(net.fwd([1, 1])) 
 net.print()
+net.trial([1, 0], [1])
+print(net.fwd([1, 0]))
+net.trial([1, 0], [1])
+print(net.fwd([1, 0]))
