@@ -73,3 +73,5 @@ class TestGraph(ut.TestCase):
 		self.assertEqual(net.PRE_error, {2: 1, 3: 0.5})
 		self.assertEqual(net.POST_error, {3: 0.5})
 		self.assertEqual(net.values_error, {3: {2: 0.5}})
+		self.assertEqual(net.weights_error, {0: {}, 1: {}, 3: {2: 0}})
+		self.assertEqual(net.weights, {0: {}, 1: {}, 3: {2: 0.5}})
