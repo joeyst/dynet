@@ -63,12 +63,15 @@ class Graph:
 	
 		self.reset_for_trial()
 
-	def trial(self, inps, outs, verbose=True):
-		print("Pre-forward pass:", self.repr())
+	def trial(self, inps, outs, verbose=False):
+		if verbose: 
+			print("Pre-forward pass:", self.repr())
 		self.fwd(inps)
-		print("Post-forward pass:", self.repr())
+		if verbose:
+			print("Post-forward pass:", self.repr())
 		self.bwd(outs)
-		print("Post-backward pass:", self.repr())
+		if verbose:
+			print("Post-backward pass:", self.repr())
 	
 	def reset_for_trial(self):
 		self.set_all_four_errors_to_zero()
@@ -162,21 +165,14 @@ class Graph:
 	def update_weight_errors(self):
 		for i in range(self.points()):
 			if not self.is_output_node(i):
-				print("get_following_nodes({}): {}".format(i, self.get_following_nodes(i)))
 				for j in self.get_following_nodes(i):
 					# Weights error = next node's PRE error * current node's POST value 
-					print("Reached self.weights_error[i][j] = self.POST[i] * self.PRE_error[j]")
-					print("self.weights_error[{}][{}] = self.POST[{}] * self.PRE_error[{}]".format(i, j, i, j))
-					print("self.weights_error[{}][{}] = {} * {}".format(i, j, self.POST[i], self.PRE_error[j]))
-					print("SELF.POST:", self.POST)
 					self.weights_error[i][j] = self.POST[i] * self.PRE_error[j]
 			
 	def adjust_weights(self):
 		for i in range(self.points()):
 			if not self.is_output_node(i):
 				for j in self.get_following_nodes(i):
-					print("Reached self.weights[{}][{}] -= self.lr * self.weights_error[{}][{}]".format(i, j, i, j))
-					print("self.weights[{}][{}] -= {} * {}".format(i, j, self.lr, self.weights_error[i][j]))
 					self.weights[i][j] += self.lr * self.weights_error[i][j]
 
 	def is_node_error_ready_for_compute(self, i):
@@ -186,37 +182,6 @@ class Graph:
 		return True
 
 	def update_PRE_and_POST_error_for_node(self, previous):
-	 
-		# We have a node that points to a bunch of other nodes, so 
-		# its responsibility in the error will be the sum of how it 
-		# affects those other nodes. 
-	
-		# So, get a list of nodes it points to, and sum the PRE values of those nodes 
-		# multiplied with the weights 
-	
-		"""
-		NEXT1_PRE = sum(w1v1 + w2v2 ...)
-		NEXT2_PRE = sum(...)
-		NEXT3_PRE = sum(...)
-	
-		# We need to figure out the error that CURR_NODE contributes. 
-		CURR_NODE => VALUE 
-		VALUE = Weight * PREVIOUS_POST 
-		Take derivative w/ respect to previous post, and we get the WEIGHT. 
-
-		Take each of the next PREs and multiply them with their corresponding weights 
-		=> dot product 
-
-
-	 
-	 
-	 
-		PRE => apply nonlinear function to PRE to get POST 
-		We know the POST error contribution 
-		dError/dPOST => dError/dPRE * dPRE/dPOST 
-		"""
-	 
-		print("PREVIOUS:", previous)
 		for next_node in self.get_following_nodes(previous):
 			# Might be wrong bc should be [i]
 			if self.values_error[previous] != {}:
@@ -280,7 +245,6 @@ class Graph:
 	def update_output_PRE_errors(self, outs):
 		error_list = list(map(lambda pair : pair[0] - pair[1], list(zip(outs, self.outputs()))))
 		for i in range(self.ilen, self.ilen + self.olen):
-			print("Setting PRE_error[{}] = {}".format(i, error_list[i - self.ilen]))
 			self.PRE_error[i] = error_list[i - self.ilen]
 			self.ready_error[i] = True
 		return error_list
@@ -362,18 +326,3 @@ class Graph:
 	def print(self):
 		print(self.repr())
 	
-# net = Graph(2, 1)
-# net.add_node()
-# net.print()
-# net.add_edge(3, 2)
-# net.print()
-# net.add_node()
-# net.add_edge(4, 2)
-# net.print()
-# print(net.fwd([0, 0]))
-# print(net.fwd([1, 1])) 
-# net.print()
-# net.trial([1, 0], [1])
-# print(net.fwd([1, 0]))
-# net.trial([1, 0], [1])
-# print(net.fwd([1, 0]))

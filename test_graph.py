@@ -72,7 +72,6 @@ class TestGraph(ut.TestCase):
 		self.assertEqual(net.weights, {0: {}, 1: {}, 3: {2: 0.5}})
 
 	def test_bwd_with_connection_from_input_to_output(self):
-		print("\n\n\nTEST START =========================")
 		net = Graph(2, 1)
 		net.add_edge(0, 2, 0.5)
 		net.print()
@@ -86,8 +85,5 @@ class TestGraph(ut.TestCase):
 			net.fwd([1, 1])
 			net.bwd([1])
 			error = net.get_error()
-			print("Error: ", error)
 			self.assertTrue(error < prev_error)
 			prev_error = error
-
-		print("TEST END =========================\n\n\n")
