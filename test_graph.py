@@ -46,7 +46,6 @@ class TestGraph(ut.TestCase):
 
 		prev_net = deepcopy(net)
 		net.fwd([1, 1])
-		net.print()
 		self.assertEqual(net.weights, prev_net.weights)
 		self.assertEqual(net.get_dependency_dict(), prev_net.get_dependency_dict())
 		self.assertEqual(net.values_error, prev_net.values_error)
@@ -64,14 +63,31 @@ class TestGraph(ut.TestCase):
 		net.add_edge(3, 2)
 
 		net.fwd([1, 1])
-		print("After fwd:")
-		net.print()
 		net.bwd([1])
-		print("After bwd:")
-		net.print()
 		self.assertEqual(net.ready_error, {2: True, 3: True})
 		self.assertEqual(net.PRE_error, {2: 1, 3: 0.5})
 		self.assertEqual(net.POST_error, {3: 0.5})
 		self.assertEqual(net.values_error, {3: {2: 0.5}})
 		self.assertEqual(net.weights_error, {0: {}, 1: {}, 3: {2: 0}})
 		self.assertEqual(net.weights, {0: {}, 1: {}, 3: {2: 0.5}})
+
+	def test_bwd_with_connection_from_input_to_output(self):
+		print("\n\n\nTEST START =========================")
+		net = Graph(2, 1)
+		net.add_edge(0, 2, 0.5)
+		net.print()
+		net.fwd([1, 1])
+		net.print()
+		net.bwd([1])
+		net.print()
+  
+		prev_error = net.get_error()
+		for i in range(5):
+			net.fwd([1, 1])
+			net.bwd([1])
+			error = net.get_error()
+			print("Error: ", error)
+			self.assertTrue(error < prev_error)
+			prev_error = error
+
+		print("TEST END =========================\n\n\n")

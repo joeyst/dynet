@@ -160,16 +160,24 @@ class Graph:
 			i += 1
 
 	def update_weight_errors(self):
-		for i in range(self.ilen + self.olen, self.points()):
-			for j in self.get_following_nodes(i):
-				# Weights error = next node's PRE error * current node's POST value 
-				self.weights_error[i][j] = self.POST[i] * self.PRE_error[j]
-		
+		for i in range(self.points()):
+			if not self.is_output_node(i):
+				print("get_following_nodes({}): {}".format(i, self.get_following_nodes(i)))
+				for j in self.get_following_nodes(i):
+					# Weights error = next node's PRE error * current node's POST value 
+					print("Reached self.weights_error[i][j] = self.POST[i] * self.PRE_error[j]")
+					print("self.weights_error[{}][{}] = self.POST[{}] * self.PRE_error[{}]".format(i, j, i, j))
+					print("self.weights_error[{}][{}] = {} * {}".format(i, j, self.POST[i], self.PRE_error[j]))
+					print("SELF.POST:", self.POST)
+					self.weights_error[i][j] = self.POST[i] * self.PRE_error[j]
+			
 	def adjust_weights(self):
 		for i in range(self.points()):
 			if not self.is_output_node(i):
 				for j in self.get_following_nodes(i):
-					self.weights[i][j] -= self.lr * self.weights_error[i][j]
+					print("Reached self.weights[{}][{}] -= self.lr * self.weights_error[{}][{}]".format(i, j, i, j))
+					print("self.weights[{}][{}] -= {} * {}".format(i, j, self.lr, self.weights_error[i][j]))
+					self.weights[i][j] += self.lr * self.weights_error[i][j]
 
 	def is_node_error_ready_for_compute(self, i):
 		for j in self.get_following_nodes(i):
@@ -241,7 +249,6 @@ class Graph:
 		# Map of node indices to the node indices that must be evaluated 
 		# BEFORE them. 
 		
-		print("WEIGHTS:", self.weights)
 		deps = {}
 		for i in range(self.ilen, self.points()):
 			deps[i] = set()
@@ -264,13 +271,16 @@ class Graph:
 			self.POST[i] = inps[i]
 			self.ready[i] = True
 
+	def get_error(self):
+		return sum([self.PRE_error[i] for i in range(self.ilen, self.ilen + self.olen)])
+
 	def error(self, outs):
 		return SquaredDifference(outs, self.outputs())
 
 	def update_output_PRE_errors(self, outs):
-		error_list = list(map(lambda pair : (pair[0] - pair[1]) ** 2, list(zip(outs, self.outputs()))))
+		error_list = list(map(lambda pair : pair[0] - pair[1], list(zip(outs, self.outputs()))))
 		for i in range(self.ilen, self.ilen + self.olen):
-			print("Setting PRE_error[{}]".format(i))
+			print("Setting PRE_error[{}] = {}".format(i, error_list[i - self.ilen]))
 			self.PRE_error[i] = error_list[i - self.ilen]
 			self.ready_error[i] = True
 		return error_list
@@ -290,11 +300,12 @@ class Graph:
 		
 		# Otherwise, add the dependency and return `True`.
 		self.weights[prior][successor] = weight
-		self.values_error[prior][successor] = 0
+		if not self.is_input_node(prior):
+			self.values_error[prior][successor] = 0
 		self.weights_error[prior][successor] = 0
 		return True
 
-	def add_node(self, verbose=True):
+	def add_node(self, verbose=False):
 		node_id = self.points()
 		if verbose:
 			print("Adding node with id: {}".format(node_id))
@@ -329,7 +340,7 @@ class Graph:
 				return False
 		return True
 		
-	def update_PRE_and_POST_for_node(self, i):
+	def update_PRE_and_POST_for_node(self, i, verbose=False):
 		self.ready[i] = True
 		if self.is_input_node(i):
 			print("Uh oh. Updating PRE and POST for input node. In graph.py's update_PRE_and_POST_for_node.")
@@ -338,7 +349,8 @@ class Graph:
 			self.POST[i] = self.fn(self.PRE[i])
 			return self.POST[i]
 		else:
-			print("Not updating POST value for output node. graph.py's update_PRE_and_POST_for_node.")
+			if verbose:
+				print("Not updating POST value for output node. graph.py's update_PRE_and_POST_for_node.")
 	
 	def dot(self, i):
 		return sum([self.weights[j][i] * self.POST[j] for j in self.get_node_dependencies(i)])
@@ -350,18 +362,18 @@ class Graph:
 	def print(self):
 		print(self.repr())
 	
-net = Graph(2, 1)
-net.add_node()
-net.print()
-net.add_edge(3, 2)
-net.print()
-net.add_node()
-net.add_edge(4, 2)
-net.print()
-print(net.fwd([0, 0]))
-print(net.fwd([1, 1])) 
-net.print()
-net.trial([1, 0], [1])
-print(net.fwd([1, 0]))
-net.trial([1, 0], [1])
-print(net.fwd([1, 0]))
+# net = Graph(2, 1)
+# net.add_node()
+# net.print()
+# net.add_edge(3, 2)
+# net.print()
+# net.add_node()
+# net.add_edge(4, 2)
+# net.print()
+# print(net.fwd([0, 0]))
+# print(net.fwd([1, 1])) 
+# net.print()
+# net.trial([1, 0], [1])
+# print(net.fwd([1, 0]))
+# net.trial([1, 0], [1])
+# print(net.fwd([1, 0]))
