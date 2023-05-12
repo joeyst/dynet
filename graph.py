@@ -8,9 +8,6 @@ def ReLUDerivative(x):
 def SquaredDifference(preds, actus):
 	return sum(list(map(lambda vals : (vals[0] - vals[1]) ** 2, list(zip(preds, actus)))))
 
-print("SquaredDifference:", SquaredDifference([1, 2], [3, 4]))
-print("SquaredDifference:", SquaredDifference([1, 2], [3, 5]))
-
 """
 Each node has a POST and a PRE. 
 """
@@ -181,11 +178,12 @@ class Graph:
 				return False
 		return True
 
-	def update_PRE_and_POST_error_for_node(self, previous):
+	def update_PRE_and_POST_error_for_node(self, previous, verbose=False):
 		for next_node in self.get_following_nodes(previous):
 			# Might be wrong bc should be [i]
 			if self.values_error[previous] != {}:
-				print("Creating new dictionary for tabbing errors")
+				if verbose:
+					print("Creating new dictionary for tabbing errors")
 				self.values_error[previous] = {}
 			# Error that j node is contributing to i node.
 			self.values_error[previous][next_node] = self.PRE_error[next_node] * self.weights[previous][next_node]

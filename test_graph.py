@@ -74,16 +74,33 @@ class TestGraph(ut.TestCase):
 	def test_bwd_with_connection_from_input_to_output(self):
 		net = Graph(2, 1)
 		net.add_edge(0, 2, 0.5)
-		net.print()
 		net.fwd([1, 1])
-		net.print()
 		net.bwd([1])
-		net.print()
   
 		prev_error = net.get_error()
 		for i in range(5):
 			net.fwd([1, 1])
 			net.bwd([1])
 			error = net.get_error()
+			print(error)
+			self.assertTrue(error < prev_error)
+			prev_error = error
+		print("test_bwd_with_connection_from_input_to_output passed")
+
+	def test_bwd_with_intermediate_connection(self):
+		net = Graph(2, 1)
+		net.add_node()
+		net.add_edge(3, 2, 0.5)
+		net.add_edge(0, 3, 0.5)
+		net.fwd([1, 1])
+		net.bwd([1])
+
+		prev_error = net.get_error()
+		for i in range(5):
+			net.fwd([1, 1])
+			net.bwd([1])
+			net.print()
+			error = net.get_error()
+			print(error)
 			self.assertTrue(error < prev_error)
 			prev_error = error
