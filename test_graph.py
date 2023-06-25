@@ -1,6 +1,7 @@
 import unittest as ut
 from graph import Graph
 from copy import deepcopy
+import random
 
 class TestGraph(ut.TestCase):
 	def test_add_node(self):
@@ -76,7 +77,7 @@ class TestGraph(ut.TestCase):
 		net.add_edge(0, 2, 0.5)
 		net.fwd([1, 1])
 		net.bwd([1])
-  
+	
 		prev_error = net.get_error()
 		for i in range(5):
 			net.fwd([1, 1])
@@ -91,7 +92,7 @@ class TestGraph(ut.TestCase):
 		net = Graph(2, 1)
 		net.add_node()
 		net.add_edge(3, 2, 0.5)
-		net.add_edge(0, 3, 0.5)
+		net.add_edge(0, 3, 0.6)
 		net.fwd([1, 1])
 		net.bwd([1])
 
@@ -101,6 +102,180 @@ class TestGraph(ut.TestCase):
 			net.bwd([1])
 			net.print()
 			error = net.get_error()
-			print(error)
+			# print(error)
 			self.assertTrue(error < prev_error)
 			prev_error = error
+
+	def test_bwd_with_multiple_intermediate_connections(self):
+		net = Graph(2, 1)
+		net.add_node()
+		net.add_edge(3, 2, 0.5)
+		net.add_edge(0, 3, 0.6)
+		net.add_edge(1, 3, 0.7)
+		net.add_edge(0, 2, 0.8)
+		net.add_edge(1, 2, 0.9)
+	
+		net.fwd([1, 1])
+		net.bwd([1])
+
+		prev_error = net.get_error()
+		for i in range(5):
+			net.fwd([1, 1])
+			net.bwd([1])
+			error = net.get_error()
+			self.assertTrue(error < prev_error)
+			prev_error = error
+
+	def test_bwd_with_multiple_intermediate_connects_and_multiple_values(self):
+		net = Graph(2, 1)
+		net.add_node()
+		net.add_edge(3, 2, 0.5)
+		net.add_edge(0, 3, 0.6)
+		net.add_edge(1, 3, 0.7)
+		net.add_edge(0, 2, 0.8)
+		net.add_edge(1, 2, 0.9)
+
+		net.fwd([1, 1])
+		net.bwd([1])
+		net.fwd([2, 2])
+		net.bwd([0])
+		prev_error = net.get_error()
+
+		for i in range(5):
+			net.fwd([1, 1])
+			net.bwd([1])
+			net.fwd([2, 2])
+			net.bwd([0])
+			net.fwd([3, 3])
+			net.bwd([-1])
+			net.fwd([4, 4])
+			net.bwd([-2])
+
+		error = net.get_error()
+		self.assertTrue(error < prev_error)
+		prev_error = error
+
+	def test_bwd_with_multiple_intermediate_connects_and_multiple_values_with_random_weights(self):
+		net = Graph(2, 1)
+		net.add_node()
+		# random weights from -.5 to .5
+		net.add_edge(3, 2, random.random() - 0.5)
+		net.add_edge(0, 3, random.random() - 0.5)
+		net.add_edge(1, 3, random.random() - 0.5)
+		net.add_edge(0, 2, random.random() - 0.5)
+		net.add_edge(1, 2, random.random() - 0.5)
+
+		net.fwd([1, 1])
+		net.bwd([1])
+		net.fwd([2, 2])
+		net.bwd([0])
+		prev_error = net.get_error()
+
+		for i in range(5000):
+			net.fwd([1, 1])
+			net.bwd([1])
+			net.fwd([2, 2])
+			net.bwd([0])
+			net.fwd([3, 3])
+			net.bwd([-1])
+			net.fwd([4, 4])
+			net.bwd([-2])
+	
+		error = net.get_error()
+		self.assertTrue(error < prev_error)
+		prev_error = error
+
+	def test_dense(self):
+		net = Graph(2, 1)
+		net.add_edge(0, 2)
+		net.add_edge(1, 2)
+
+		for i in range(20):
+			net.add_node()
+
+		for i in range(20):
+			net.add_edge(0, i + 3)
+			net.add_edge(1, i + 3)
+	 
+		for i in range(20):
+			net.add_node()
+
+		for i in range(20):
+			for j in range(20):
+				net.add_edge(i + 3, j + 23, random.random() - 0.5)
+		
+		for i in range(20):
+			net.add_edge(i + 23, 2, random.random() - 0.5)
+		
+		net.fwd([1, 1])
+		net.bwd([1])
+
+		for i in range(5):
+			net.fwd([1, 1])
+			net.bwd([1])
+			net.fwd([2, 2])
+			net.bwd([0])
+			net.fwd([3, 3])
+			net.bwd([-1])
+			net.fwd([4, 4])
+			net.bwd([-2])
+	 
+		
+	 
+		print(net.fwd([1, 1]))
+		print(net.fwd([2, 2]))
+		print(net.fwd([3, 3]))
+		print(net.fwd([4, 4]))
+	 
+		error = net.get_error()
+		print(error)
+		print(net.weights)
+		self.assertTrue(error < 0.1)
+	
+	def test_dense_with_square_numbers(self):
+		net = Graph(2, 1)
+		net.add_edge(0, 2)
+		net.add_edge(1, 2)
+
+		for i in range(20):
+			net.add_node()
+
+		for i in range(20):
+			net.add_edge(0, i + 3)
+			net.add_edge(1, i + 3)
+	 
+		for i in range(20):
+			net.add_node()
+
+		for i in range(20):
+			for j in range(20):
+				net.add_edge(i + 3, j + 23, random.random() - 0.5)
+		
+		for i in range(20):
+			net.add_edge(i + 23, 2, random.random() - 0.5)
+		
+		nums_a = [i for i in range(20)]
+		nums_b = [i for i in range(3, 23)]
+		sums = [i * j for i, j in list(zip(nums_a, nums_b))]
+  
+		for i in range(50):
+			for j in range(20):
+				if j % 2 == 0:
+					net.fwd([nums_a[j], nums_b[j]])
+					net.bwd([sums[j]])
+		
+		errors = []
+		for i in range(20):
+			if i % 2 == 1:
+				net.fwd([nums_a[i], nums_b[i]])
+				errors.append(net.bwd([sums[i]]))
+		
+		print(errors)
+		print("SUM OF ERRORS:", sum(errors))
+		
+		error = net.get_error()
+		print(error)
+		print(net.weights)
+		self.assertTrue(error < 0.1)
+
+

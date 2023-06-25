@@ -1,9 +1,26 @@
 
+import math
+
 def ReLU(x):
 	return max(0, x)
 
 def ReLUDerivative(x):
 	return max(0, 1)
+
+def tanh(x):
+	try:
+		return (2 / (1 + math.exp(-2 * x))) - 1
+	except OverflowError:
+		print("Overflow error in tanh: {}".format(x))
+
+def tanhDerivative(x):
+	return 1 - (tanh(x) ** 2)
+  
+def BinaryStep(x):
+	return 1 if x > 0 else 0
+
+def BinaryStepDerivative(x):
+	return 1
 
 def SquaredDifference(preds, actus):
 	return sum(list(map(lambda vals : (vals[0] - vals[1]) ** 2, list(zip(preds, actus)))))
@@ -13,7 +30,7 @@ Each node has a POST and a PRE.
 """
 
 class Graph:
-	def __init__(self, ilen, olen, lr=0.05, fn=ReLU, fnd=ReLUDerivative):
+	def __init__(self, ilen, olen, lr=0.05, fn=tanh, fnd=tanhDerivative):
 		"""
 		Net parameters 
 		"""
@@ -235,7 +252,7 @@ class Graph:
 			self.ready[i] = True
 
 	def get_error(self):
-		return sum([self.PRE_error[i] for i in range(self.ilen, self.ilen + self.olen)])
+		return sum([(self.PRE_error[i] ** 2) for i in range(self.ilen, self.ilen + self.olen)])
 
 	def error(self, outs):
 		return SquaredDifference(outs, self.outputs())
@@ -265,6 +282,23 @@ class Graph:
 		if not self.is_input_node(prior):
 			self.values_error[prior][successor] = 0
 		self.weights_error[prior][successor] = 0
+		return True
+
+	def remove_edge(self, prior, successor):
+		# If the node is beyond the end of the network, return `False`.
+		if prior >= self.points() or successor >= self.points():
+			return False
+		
+		# If the node is not in the dependencies map, then we must be trying to 
+		# add a dependency to an input node. Return `False`.
+		if self.is_input_node(successor):
+			return False
+		
+		# Otherwise, add the dependency and return `True`.
+		del self.weights[prior][successor]
+		if not self.is_input_node(prior):
+			del self.values_error[prior][successor]
+		del self.weights_error[prior][successor]
 		return True
 
 	def add_node(self, verbose=False):
